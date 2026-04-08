@@ -188,6 +188,18 @@ const routes = [
       },
     ],
   },
+  {
+    path: "/datacenter/review-population",
+    component: () => import("layouts/MainLayout.vue"),
+    children: [
+      {
+        path: "",
+        component: () =>
+          import("src/pages/datacenter/managedata/population/ReviewPopulationDatasets.vue"),
+        meta: { requiresUser: true, requiresAdmin: false },
+      },
+    ],
+  },
 
   {
     path: "/datacenter/manage-tasks",

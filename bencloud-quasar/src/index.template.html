@@ -19,6 +19,30 @@
 
     <!-- Google Tag Manager -->
     <!-- End Google Tag Manager -->
+
+    <!-- Runtime env shim for local static builds (avoids "process is not defined"). -->
+    <script>
+      (function () {
+        if (typeof window.process === 'undefined') {
+          window.process = { env: {} };
+        } else if (!window.process.env) {
+          window.process.env = {};
+        }
+
+        // Default for local docker-compose dev
+        if (!window.process.env.API_SERVER) {
+          var host = window.location.hostname;
+          window.process.env.API_SERVER =
+            host === 'localhost' || host === '127.0.0.1'
+              ? 'http://localhost:4567'
+              : '';
+        }
+
+        if (typeof window.process.env.AUTH_ENABLED === 'undefined') {
+          window.process.env.AUTH_ENABLED = '';
+        }
+      })();
+    </script>
   </head>
   <body>
     <!-- DO NOT touch the following DIV -->

@@ -14,13 +14,14 @@ export const loadPopulationOptions = (url) => {
         try {
 
             const result = await axios
-                .get(process.env.API_SERVER + "/api/population", {
+                .get(process.env.API_SERVER + "/api/population-datasets-info", {
             params: {
                   
                 },
             })
             .then((response) => {
-                data.value = response.data
+                const body = response.data
+                data.value = Array.isArray(body?.records) ? body.records : body
                 console.log(data.value)
             })
         } catch (ex) {

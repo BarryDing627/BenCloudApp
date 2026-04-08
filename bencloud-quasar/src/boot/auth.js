@@ -11,78 +11,83 @@ export default boot(async ({ router, store }) => {
 
   const adminPermission = "admin";
 
-  // Before routing to each path
-  router.beforeEach(async (to, from) => {
-  try {
-    var isUser = false;
-    var status = null;
-    // Check if the current user is a BenMAP user, store the response status
-    try {
-      const result = await axios
-        .get(process.env.API_SERVER + "/api/user")
-        .then((response) => {
-          isUser = response.data.isUser;
-          isAdmin.value = response.data.isAdmin;
-          store.commit("auth/updateUser", "response.data.uid");
-          if (isAdmin.value) {
-            store.commit("auth/addPermission", adminPermission);
-          } else {
-            store.commit("auth/removePermission", adminPermission);
-          }
-          if(!!response) {
-            status = response.status;
-          } else if (!!error) {
-            status = error.status;
-          }
-        })
-        .catch(error => {
-          console.log("/api/user ERROR: " + error.response.data.error);
-        })
-    } catch(ex) {
-      console.log(ex)
-    }
-    // Non-200 status means BenMAP is down, route the user to the error page
-    // Don't include /error to avoid an endless loop
-    if(to.path != '/error' && status != 200) {
-      return '/error';
-    } else if (to.path === '/error' && status === 200) { 
-      return '/';
-    } else if (to.meta.requiresUser) {
-      // If the requested page requires the user to be a BenMAP user and they are not a BenMAP user, route them to the request access page
-      if(!isUser) {
-        console.log("Current user is not a BenMAP user.");
-        return '/requestaccess';
-      } 
-    }
-    if(to.path === '/requestaccess' || to.path === '/requestaccess/') {
-      var isUser = false;
-      // If the current user is a BenMAP user, we don't want them to get stuck on the request access page
+  // Local dev or when auth is disabled: skip server-side auth checks.
+  // When enabled, keep this lightweight "BenMAP is down" guard.
+  if (process.env.AUTH_ENABLED) {
+    router.beforeEach(async (to, from) => {
       try {
-        const result = await axios
-          .get(process.env.API_SERVER + "/api/user")
-          .then((response) => {
-            isUser = response.data.isUser;
-            isAdmin.value = response.data.isAdmin;
-            store.commit("auth/updateUser", response.data.uid);
-            if (isAdmin.value) {
-              store.commit("auth/addPermission", adminPermission);
-            } else {
-              store.commit("auth/removePermission", adminPermission);
-            }
-          })
-      } catch(ex) {
-        console.log(ex)
+        let isUser = false;
+        let status = null;
+
+        try {
+          await axios
+            .get(process.env.API_SERVER + "/api/user")
+            .then((response) => {
+              isUser = response.data.isUser;
+              isAdmin.value = response.data.isAdmin;
+              store.commit("auth/updateUser", response.data.uid);
+              if (isAdmin.value) {
+                store.commit("auth/addPermission", adminPermission);
+              } else {
+                store.commit("auth/removePermission", adminPermission);
+              }
+              status = response?.status ?? 200;
+            })
+            .catch((error) => {
+              status = error?.response?.status ?? 500;
+              console.log(
+                "/api/user ERROR:",
+                error?.response?.data?.error ?? error?.message ?? error
+              );
+            });
+        } catch (ex) {
+          console.log(ex);
+        }
+
+        // Non-200 status means BenMAP is down, route the user to the error page
+        // Don't include /error to avoid an endless loop
+        if (to.path != "/error" && status != 200) {
+          return "/error";
+        } else if (to.path === "/error" && status === 200) {
+          return "/";
+        } else if (to.meta.requiresUser) {
+          // If the requested page requires the user to be a BenMAP user and they are not a BenMAP user, route them to the request access page
+          if (!isUser) {
+            console.log("Current user is not a BenMAP user.");
+            return "/requestaccess";
+          }
+        }
+
+        if (to.path === "/requestaccess" || to.path === "/requestaccess/") {
+          // If the current user is a BenMAP user, we don't want them to get stuck on the request access page
+          let requestAccessIsUser = false;
+          try {
+            await axios.get(process.env.API_SERVER + "/api/user").then((response) => {
+              requestAccessIsUser = response.data.isUser;
+              isAdmin.value = response.data.isAdmin;
+              store.commit("auth/updateUser", response.data.uid);
+              if (isAdmin.value) {
+                store.commit("auth/addPermission", adminPermission);
+              } else {
+                store.commit("auth/removePermission", adminPermission);
+              }
+            });
+          } catch (ex) {
+            console.log(ex);
+          }
+          // If they are a BenMAP user, route them to the main BenMAP page
+          if (requestAccessIsUser) {
+            console.log(
+              "Current user is a BenMAP user, routing away from /requestaccess."
+            );
+            return "/";
+          }
+        }
+      } catch (ex) {
+        console.log(ex);
       }
-      // If they are a BenMAP user, route them to the main BenMAP page
-      if(isUser) {
-        console.log("Current user is a BenMAP user, routing away from /requestaccess.");
-        return '/';
-      }
-    }
-  } catch(ex) {
-    console.log(ex)
+    });
   }
-  });
 
 
 

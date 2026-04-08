@@ -328,8 +328,14 @@ export default defineComponent({
             store.commit("grids/updateGridId", 0);
 
             rows.value = records.map((r) => ({ ...r, visible: false }));
-            window.dispatchEvent(new CustomEvent('layers-added', { 
-              detail: rows.value.map(r => r.table_name.replace(/^grids\./, ''))
+            window.dispatchEvent(new CustomEvent('layers-added', {
+              detail: rows.value
+                .map((r) =>
+                  typeof r.table_name === "string"
+                    ? r.table_name.replace(/^grids\./, "")
+                    : ""
+                )
+                .filter(Boolean),
             }))
 
             // don't forget to update local pagination object

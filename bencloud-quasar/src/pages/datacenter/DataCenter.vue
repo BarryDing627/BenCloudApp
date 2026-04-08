@@ -250,7 +250,7 @@ export default defineComponent({
         description: 'Census-based counts of the population in specific spatial units.',
         showFull: false,
         hasOverflow: false,
-        route: null
+        route: '/datacenter/review-population'
       },
       {
         label: 'Population Characteristics',

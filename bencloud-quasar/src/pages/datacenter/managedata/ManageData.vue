@@ -37,6 +37,18 @@
           />
         </q-card-actions>
       </q-card>
+      <q-card class="my-card task-card">
+        <q-card-section> Browse population datasets and available years. </q-card-section>
+        <q-card-actions vertical>
+          <q-btn
+            color="primary"
+            icon-right="mdi-account-group"
+            push
+            @click="$router.replace('/datacenter/review-population')"
+            label="Review Population Datasets"
+          />
+        </q-card-actions>
+      </q-card>
     </div>
   </q-page>
 </template>
