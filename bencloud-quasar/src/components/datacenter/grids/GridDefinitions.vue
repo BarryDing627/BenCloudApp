@@ -67,12 +67,10 @@ import { defineComponent } from "vue";
 import { ref, unref, onMounted, onBeforeMount, watch, watchEffect } from "vue";
 import axios from "axios";
 import { useStore } from "vuex";
-import { layerName } from '../../common/AirQualityUploadForm.vue';
 import { showAll } from '../../../pages/datacenter/managedata/grids/ReviewGridDefinitions.vue';
 import { date } from 'quasar'
 
 var trackCurrentPage = null;
-var numLayers = null;
 
 export default defineComponent({
   model: ref(null),
@@ -295,7 +293,6 @@ export default defineComponent({
       if(!!trackCurrentPage) {
         props.pagination.page = trackCurrentPage;
       }
-      let layer = layerName;
       const { page, rowsPerPage, sortBy, descending } = props.pagination;
       const filter = props.filter;
 
@@ -309,7 +306,7 @@ export default defineComponent({
           .get(process.env.API_SERVER + "/api/grid-definitions-info", {
             params: {
               page: page,
-              rowsPerPage: ++numLayers,
+              rowsPerPage: rowsPerPage,
               sortBy: sortBy,
               descending: descending,
               filter: filter,
@@ -318,42 +315,41 @@ export default defineComponent({
           })
           .then((response) => {
             let data = response.data;
+            // API returns { filteredRecordsCount, records } (JSON object; legacy: plain array)
+            let records = Array.isArray(data)
+              ? data
+              : Array.isArray(data?.records)
+                ? data.records
+                : [];
 
             console.log("----- return -----");
             console.log(data);
 
             store.commit("grids/updateGridId", 0);
 
-            let loadPage = 1;
-            for(let i = 0; i < data.length; i++) {
-              if(data[i].name === layer) {
-                loadPage = Math.floor((i/rowsPerPage) + 1);
-                break;
-              }
-            }
-
-            rows.value = [];
-            let rowCount = 0;
-            for(let i = 0; i < rowsPerPage; i++) {
-              if(!!data[(loadPage-1)*rowsPerPage + i]) {
-                rows.value[i] = data[(loadPage-1)*rowsPerPage + i];
-                rows.value[i].visible = false; // Set default state to false
-              }
-            }
+            rows.value = records.map((r) => ({ ...r, visible: false }));
             window.dispatchEvent(new CustomEvent('layers-added', { 
               detail: rows.value.map(r => r.table_name.replace(/^grids\./, ''))
             }))
 
             // don't forget to update local pagination object
-            pagination.value.page = loadPage;
+            pagination.value.page = page;
             pagination.value.rowsPerPage = rowsPerPage;
             pagination.value.sortBy = sortBy;
             pagination.value.descending = descending;
-            pagination.value.rowsNumber = data.filteredRecordsCount;
+            pagination.value.rowsNumber = Array.isArray(data)
+              ? data.length
+              : data.filteredRecordsCount;
 
             // ...and turn of loading indicator
             loading.value = false;
             trackCurrentPage = null;
+          })
+          .catch((err) => {
+            console.error("grid-definitions-info", err);
+            rows.value = [];
+            pagination.value.rowsNumber = 0;
+            loading.value = false;
           });
       }
     
