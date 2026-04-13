@@ -39,6 +39,43 @@
               </p>
             </q-card-section>
           </q-card>
+          <div class="category" v-if="isAdmin">
+            <div class="category-cards">
+              <q-card v-for="(card, index) in adminCards" 
+                     :key="index"
+                     flat 
+                     class="data-card">
+                <q-card-actions vertical class="q-px-none">
+                  <div class="full-width relative-position">
+                  <q-btn
+                    color="primary"
+                    class="full-width"
+                    push
+                    @click="exportData"
+                    :label="card.label"
+                  />
+                  <q-tooltip anchor="top middle" self="bottom middle">
+                    In Development
+                  </q-tooltip>
+                  </div>
+                </q-card-actions>
+                <q-card-section class="q-px-none">
+                  <p class="description" :class="{ 'clamp-text': !card.showFull }">
+                    {{ card.description }}
+                  </p>
+                  <q-btn
+                    v-if="card.hasOverflow"
+                    flat
+                    dense
+                    color="primary"
+                    :label="card.showFull ? 'Less' : 'More'"
+                    class="more-link"
+                    @click="toggleDescription(card)"
+                  />
+                </q-card-section>
+              </q-card>
+            </div>
+          </div>
         </div>
 
       </div>
@@ -209,7 +246,6 @@
               </q-card>
             </div>
           </div>
-
           
         </div>
       </div>
@@ -220,6 +256,7 @@
 <script>
 import { defineComponent, ref, reactive } from 'vue';
 import { isAdmin } from "../../boot/auth.js";
+import axios from 'axios';
 
 export default defineComponent({
   name: 'DataCenter',
@@ -267,7 +304,7 @@ export default defineComponent({
         description: 'Functions to calculate the economic value of changes in incidence of adverse health outcomes.',
         showFull: false,
         hasOverflow: false,
-        route: null
+        route: '/datacenter/review-valuation'
       },
       {
         label: 'Inflation Datasets',
@@ -291,6 +328,17 @@ export default defineComponent({
         description: 'Concentration-response functions to calculate the change in the number of adverse health outcomes.',
         showFull: false,
         hasOverflow: false,
+        route: '/datacenter/review-hif'
+      }
+      
+    ]);
+
+    const adminCards = reactive([
+    {
+        label: 'Data Export',
+        description: 'Export datasets for all users.',
+        showFull: false,
+        hasOverflow: false,
         route: null
       }
       
@@ -299,6 +347,7 @@ export default defineComponent({
     const toggleDescription = (card) => {
       card.showFull = !card.showFull;
     };
+    
 
     return {
       showFullTaskDescription,
@@ -307,10 +356,46 @@ export default defineComponent({
       populationCards,
       valuationCards,
       healthCards,
+      adminCards,
       isAdmin,
       toggleDescription
     };
-  }
+  },
+
+  data() {
+    return {
+      exporting: false,
+    };
+  },
+  methods: {
+    exportData() {
+      this.exporting = true;
+      try {
+        axios.get(
+          process.env.API_SERVER + "/api/admin/data-export",
+          {
+            headers: { Accept: "application/zip", "Content-Type": "application/zip" },
+            responseType: "blob",
+          }
+        )
+        .then((response) => {          
+          const url = URL.createObjectURL(new Blob([response.data]));
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'BenMAP_Datasets.zip';
+          a.click();
+          URL.revokeObjectURL(url);
+        })
+      } catch (ex) {
+        console.error("Export error:", ex);
+        if (ex.response) {
+          console.log(ex.response.status + " error occurred");
+        }
+      } finally {
+        this.exporting = false;
+      }
+    },
+  },
 });
 </script>
 
